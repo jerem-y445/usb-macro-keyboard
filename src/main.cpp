@@ -10,6 +10,7 @@
 #define BUTTON4 4
 #define NUM_BUTTONS 4
 
+//Rotary encoder definitions
 #define CLK_PIN 2
 #define DT_PIN 3
 #define SW_PIN 4
