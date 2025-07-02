@@ -1,6 +1,7 @@
 #include <Arduino.h>
 #include "USB.h"
 #include "USBHIDKeyboard.h"
+#include "ezButton.h"
 
 //Button definitions
 #define BUTTON1 1
@@ -9,9 +10,20 @@
 #define BUTTON4 4
 #define NUM_BUTTONS 4
 
+#define CLK_PIN 2
+#define DT_PIN 3
+#define SW_PIN 4
+#define CW_DIRECTION 0
+#define CWW_DIRECTION 1
+
 //Profile selection and encoder update variables
 int profileSelectIndex = 0;
-double encoderUpdate = 0;
+int direction = CW_DIRECTION;
+int CLK_state;
+int prev_CLK_state;
+
+//Create an ezButton object assigned to pin 4
+ezButton button(SW_PIN);
 
 //Defining USB HID Keyboard class
 USBHIDKeyboard Keyboard;
@@ -27,61 +39,55 @@ struct Profile {
   Macro macros[NUM_BUTTONS];
 };
 
-//Setting profiles with specific macros
+//Setting profiles with application-specific macros
 Profile profiles[] {
-  {"Browser", {
-    {KEY_LEFT_CTRL, 't'},
-    {KEY_LEFT_CTRL, 'w'},
-    {KEY_LEFT_CTRL, 'n'},
-    {KEY_LEFT_CTRL, 'f'}
-  }},
-  {"VSCode", {
-    {KEY_LEFT_CTRL, 's'},
-    {KEY_LEFT_CTRL, 'a'},
-    {KEY_LEFT_CTRL, 'z'},
-    {KEY_LEFT_CTRL, 'y'}
-  }},
+  {"Browser", { {KEY_LEFT_CTRL, 't'}, {KEY_LEFT_CTRL, 'w'}, {KEY_LEFT_CTRL, 'n'}, {KEY_LEFT_CTRL, 'f'} } },
+  {"VSCode", {{KEY_LEFT_CTRL, 's'}, {KEY_LEFT_CTRL, 'a'}, {KEY_LEFT_CTRL, 'z'}, {KEY_LEFT_CTRL, 'y'} } }
 };
 
 //Prototypes
 void performMacro(Macro macroSelection);
+int getButtonIndex(int gpioPin);
 
 void setup() {
+  Serial.begin(9600);
   USB.begin();
   Keyboard.begin();
   delay(2000);
-  Keyboard.println("Hello from Arduino USB HID!");
 
   pinMode(BUTTON1, INPUT_PULLDOWN);
   pinMode(BUTTON2, INPUT_PULLDOWN);
   pinMode(BUTTON3, INPUT_PULLDOWN);
   pinMode(BUTTON4, INPUT_PULLDOWN);
+  pinMode(CLK_PIN, INPUT);
+  pinMode(DT_PIN, INPUT);
+
+  button.setDebounceTime(50);
 }
 
 void loop() {
-  /*
-  if (digitalRead(BUTTON1)) {
-    Keyboard.press(KEY_LEFT_CTRL);
-    Keyboard.press('t');
-    delay(100);
-    Keyboard.releaseAll();
-    delay(100); // for debounce delay to prevent multiple presses from being detectedHello from Arduino USB HID!
-  }
-  */
+  button.loop(); //must be present to continuously read button state
+  
+  // Read from clock state
+  CLK_state = digitalRead(CLK_PIN);
 
   // Select profile
-  if (encoderUpdate < 10) {
-    profileSelectIndex = 0;
+  if (CLK_state != prev_CLK_state && CLK_state == HIGH) {
+    if (DT_PIN == HIGH) { // in counter-clockwise direction
+      if (profileSelectIndex > 0) {
+        profileSelectIndex--;
+      }
+      direction = CWW_DIRECTION;
+    }
+    else {
+      if (profileSelectIndex < 3) { // in clockwise direction
+        profileSelectIndex++;
+      }
+      direction = CW_DIRECTION;
+    }
   }
-  else if (encoderUpdate < 200) {
-    profileSelectIndex = 1;
-  }
-  else if (encoderUpdate < 500) {
-    profileSelectIndex = 2;
-  }
-  else if (encoderUpdate < 1000) {
-    profileSelectIndex = 3;
-  }
+
+  prev_CLK_state = CLK_state; // record previous clock state for next loop
 
   if (digitalRead(BUTTON1)) {
     int buttonIndex = getButtonIndex(BUTTON1);
@@ -106,6 +112,7 @@ void loop() {
   
 }
 
+// Performs a keyboard macro depending on profile selected
 void performMacro(Macro macroSelection) {
   Keyboard.press(macroSelection.modifier);
   Keyboard.press(macroSelection.key);
@@ -114,6 +121,7 @@ void performMacro(Macro macroSelection) {
   delay(100);
 }
 
+// Gets button index relative to the GPIO pin connected to the button pressed
 int getButtonIndex(int gpioPin) {
   return gpioPin - 1;
 }
