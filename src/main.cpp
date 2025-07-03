@@ -4,16 +4,15 @@
 #include "ezButton.h"
 
 //Button definitions
-#define BUTTON1 1
-#define BUTTON2 2
-#define BUTTON3 3
-#define BUTTON4 4
+#define BUTTON1 4
+#define BUTTON2 5
+#define BUTTON3 6
+#define BUTTON4 7
 #define NUM_BUTTONS 4
 
 //Rotary encoder definitions
-#define CLK_PIN 2
-#define DT_PIN 3
-#define SW_PIN 4
+#define CLK_PIN 41
+#define DT_PIN 1
 #define CW_DIRECTION 0
 #define CWW_DIRECTION 1
 
@@ -24,7 +23,7 @@ int CLK_state;
 int prev_CLK_state;
 
 //Create an ezButton object assigned to pin 4
-ezButton button(SW_PIN);
+//ezButton button(SW_PIN);
 
 //Defining USB HID Keyboard class
 USBHIDKeyboard Keyboard;
@@ -51,23 +50,28 @@ void performMacro(Macro macroSelection);
 int getButtonIndex(int gpioPin);
 
 void setup() {
-  Serial.begin(9600);
+  
+  Serial.begin(115200);
+  delay(2000);
+  Serial.println("Code uploaded");
+  
   USB.begin();
   Keyboard.begin();
   delay(2000);
+  
 
-  pinMode(BUTTON1, INPUT_PULLDOWN);
-  pinMode(BUTTON2, INPUT_PULLDOWN);
-  pinMode(BUTTON3, INPUT_PULLDOWN);
-  pinMode(BUTTON4, INPUT_PULLDOWN);
+  pinMode(BUTTON1, INPUT_PULLUP);
+  pinMode(BUTTON2, INPUT_PULLUP);
+  pinMode(BUTTON3, INPUT_PULLUP);
+  pinMode(BUTTON4, INPUT_PULLUP);
   pinMode(CLK_PIN, INPUT);
   pinMode(DT_PIN, INPUT);
 
-  button.setDebounceTime(50);
+  //button.setDebounceTime(50);
 }
 
 void loop() {
-  button.loop(); //must be present to continuously read button state
+  //button.loop(); //must be present to continuously read button state
   
   // Read from clock state
   CLK_state = digitalRead(CLK_PIN);
@@ -88,29 +92,33 @@ void loop() {
     }
   }
 
+  Serial.print("Profile Selected: ");
+  Serial.println(profileSelectIndex + 1);
+  delay(100);
+
   prev_CLK_state = CLK_state; // record previous clock state for next loop
 
-  if (digitalRead(BUTTON1)) {
+  if (!digitalRead(BUTTON1)) {
     int buttonIndex = getButtonIndex(BUTTON1);
     Macro selectedMacro = profiles[profileSelectIndex].macros[buttonIndex];
     performMacro(selectedMacro);
   }
-  else if (digitalRead(BUTTON2)) {
+  else if (!digitalRead(BUTTON2)) {
     int buttonIndex = getButtonIndex(BUTTON2);
     Macro selectedMacro = profiles[profileSelectIndex].macros[buttonIndex];
     performMacro(selectedMacro);
   }
-  else if (digitalRead(BUTTON3)) {
+  else if (!digitalRead(BUTTON3)) {
     int buttonIndex = getButtonIndex(BUTTON3);
     Macro selectedMacro = profiles[profileSelectIndex].macros[buttonIndex];
     performMacro(selectedMacro);
   }
-  else if (digitalRead(BUTTON4)) {
+  else if (!digitalRead(BUTTON4)) {
     int buttonIndex = getButtonIndex(BUTTON4);
     Macro selectedMacro = profiles[profileSelectIndex].macros[buttonIndex];
     performMacro(selectedMacro);
   }
-  
+
 }
 
 // Performs a keyboard macro depending on profile selected
@@ -124,5 +132,5 @@ void performMacro(Macro macroSelection) {
 
 // Gets button index relative to the GPIO pin connected to the button pressed
 int getButtonIndex(int gpioPin) {
-  return gpioPin - 1;
+  return gpioPin - 4;
 }
